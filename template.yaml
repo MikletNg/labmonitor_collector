@@ -18,7 +18,7 @@ Parameters:
     Description: Run pytest unittest or not.
   BlackListProcess: 
     Type: String
-    Default: "iexplore.exe,MicrosoftEdge.exe"
+    Default: "iexplore.exe,MicrosoftEdge.exe,candycrushsaga.exe,Solitaires.exe,MinecraftLauncher.exe"
     Description: Black List Process.
   CalendarUrl:
     Type: String
@@ -33,6 +33,10 @@ Parameters:
     AllowedValues: 
       - true
       - false
+  SNSEmail:
+    Type: String
+    Default: 'labmonitordemo@gmail.com'
+    Description: Email to recieve student misbehavior
 Globals:
   Function:
     Runtime: python3.6 # language used at runtime
@@ -557,6 +561,18 @@ Resources:
               - "*"
             MaxAge: "3000"
 
+  SourceBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Sub ${AWS::StackName}.sourcebucket
+      PolicyDocument:
+        Statement:
+        - Sid: PublicReadForGetBucketObjects
+          Effect: Allow
+          Principal: '*'
+          Action: s3:GetObject
+          Resource: !Sub arn:aws:s3:::${AWS::StackName}.sourcebucket/face/*
+
   StudentMarkingBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
@@ -879,13 +895,73 @@ Resources:
         - RestApiId: 
             Ref: "ApiGatewayApi"
           StageName: Prod
+          
+  CyrusApiKey: 
+    Type: AWS::ApiGateway::ApiKey
+    DependsOn:
+      - ApiGatewayApiProdStage
+    Properties: 
+      Name: !Sub 000000001_${AWS::StackName}
+      Description: "000000001"
+      Enabled: "true"
+      StageKeys: 
+        - RestApiId: 
+            Ref: "ApiGatewayApi"
+          StageName: Prod
+
+  MikeApiKey:
+    Type: AWS::ApiGateway::ApiKey
+    DependsOn:
+      - ApiGatewayApiProdStage
+    Properties: 
+      Name: !Sub 170072780_${AWS::StackName}
+      Description: "170072780"
+      Enabled: "true"
+      StageKeys: 
+        - RestApiId: 
+            Ref: "ApiGatewayApi"
+          StageName: Prod
+  
+  CalvinApiKey:
+    Type: AWS::ApiGateway::ApiKey
+    DependsOn:
+      - ApiGatewayApiProdStage
+    Properties: 
+      Name: !Sub 170280624_${AWS::StackName}
+      Description: "170280624"
+      Enabled: "true"
+      StageKeys: 
+        - RestApiId: 
+            Ref: "ApiGatewayApi"
+          StageName: Prod
  
+  MikeUsagePlanKey:
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties : 
+      KeyId: !Ref MikeApiKey
+      KeyType: API_KEY
+      UsagePlanId: !Ref StudentPlan
+
+  CyrusUsagePlan:
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties : 
+      KeyId: !Ref CyrusApiKey
+      KeyType: API_KEY
+      UsagePlanId: !Ref StudentPlan
+    
+  CalvinUsagePlanKey:
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties : 
+      KeyId: !Ref CalvinApiKey
+      KeyType: API_KEY
+      UsagePlanId: !Ref StudentPlan
+
   UsagePlanKey:
     Type: AWS::ApiGateway::UsagePlanKey
     Properties : 
       KeyId: !Ref ApiKey
       KeyType: API_KEY
-      UsagePlanId: !Ref StudentPlan 
+      UsagePlanId: !Ref StudentPlan
 
   DatabaseEvents:
     Type: AWS::Glue::Database
@@ -965,6 +1041,15 @@ Resources:
                     FROM "studentevents${AWS::StackName}"."event_stream" 
                     WHERE name='KeyPressEvent' 
                     GROUP BY id;
+  
+  MisbehaviorSnsTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        DisplayName: LabMonitor
+        Subscription:
+          - Endpoint: !Ref SNSEmail
+            Protocol: email
+        TopicName: Misbehavior
                       
 Outputs:
   LabCollectorApi:
@@ -1015,3 +1100,9 @@ Outputs:
   S3BucketSecureURL:
     Value: !Join ['', ['https://', !GetAtt [StudentMarkingBucket, DomainName]]]
     Description: Name of S3 bucket to hold website content
+
+  SourceBucketname:
+    Value: !Sub ${AWS::StackName}.sourcebucket
+    
+  MisbehaviorSnsTopicId:
+    Value: !Ref MisbehaviorSnsTopic

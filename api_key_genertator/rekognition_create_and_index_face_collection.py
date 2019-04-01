@@ -1,12 +1,14 @@
 import boto3
 import os
 import boto3
+import sys
 from botocore.exceptions import ClientError
 from os import environ
 
+
 rekognition=boto3.client('rekognition', region_name='us-east-1')
-collectionId='IveFaceCollection'
-image_bucket="sumerianconcierge-s3bucket-t7r1rkgwf0sn"
+collectionId=sys.argv[2]
+image_bucket=sys.argv[1]
 prefix = "face/"
 
 def delete_collection():
